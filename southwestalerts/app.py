@@ -13,6 +13,8 @@ DATE_FORMAT = 'YYYY-MM-DD'
 def check_for_price_drops(username, password, email):
     southwest = Southwest(username, password)
     flights = [f for t in southwest.get_upcoming_trips()['trips'] for f in t['flights']]
+    messages = []
+
     for flight in flights:
         try:
             if flight['internationalFlight']:
@@ -58,17 +60,20 @@ def check_for_price_drops(username, password, email):
             )
             logging.info(message)
 
-            if refund_amount > 0:
+            if refund_amount > 100:
+                messages.append(message)
                 logging.info('Sending email for price drop')
-                resp = requests.post(
-                    'https://api.mailgun.net/v3/{}/messages'.format(settings.mailgun_domain),
-                    auth=('api', settings.mailgun_api_key),
-                    data={'from': 'Southwest Alerts <southwest-alerts@{}>'.format(settings.mailgun_domain),
-                          'to': [email],
-                          'subject': 'Southwest Price Drop Alert',
-                          'text': message})
         except:
             logging.exception('error')
+
+    if messages:
+        resp = requests.post(
+            'https://api.mailgun.net/v3/{}/messages'.format(settings.mailgun_domain),
+            auth=('api', settings.mailgun_api_key),
+            data={'from': 'Southwest Alerts <southwest-alerts@{}>'.format(settings.mailgun_domain),
+                  'to': [email],
+                  'subject': 'Southwest Price Drop Alert',
+                  'text': '\n'.join(messages)})
 
 
 if __name__ == '__main__':
