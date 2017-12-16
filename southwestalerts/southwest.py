@@ -11,55 +11,75 @@ class Southwest(object):
         self._session = _SouthwestSession(username, password)
 
     def get_upcoming_trips(self):
-        return self._session.get('/api/customer/v1/accounts/account-number/{}/upcoming-trips'.format(self._session.account_number))
+        url = f'/api/customer/v1/accounts/account-number/{self._session.account_number}/upcoming-trips'
+
+        return self._session.get(url)
 
     def start_change_flight(self, record_locator, first_name, last_name):
         """Start the flight change process.
-
         This returns the flight including itinerary."""
-        resp = self._session.get('/api/extensions/v1/mobile/reservations/record-locator/{record_locator}?first-name={first_name}&last-name={last_name}&action=CHANGE'.format(
-            record_locator=record_locator,
-            first_name=first_name,
-            last_name=last_name
-        ))
-        return resp
 
-    def get_available_change_flights(self, record_locator, first_name, last_name, departure_date, origin_airport, destination_airport):
+        params = {
+            'first-name': first_name,
+            'last-name': last_name,
+            'action': 'CHANGE'
+        }
+
+        url = f'/api/extensions/v1/mobile/reservations/record-locator/{record_locator}'
+
+        return self._session.get(url, params=params)
+
+    def get_available_change_flights(self, record_locator, first_name, last_name,
+                                     departure_date, origin_airport, destination_airport):
         """Select a specific flight and continue the checkout process."""
-        url = '/api/extensions/v1/mobile/reservations/record-locator/{record_locator}/products?first-name={first_name}&last-name={last_name}&is-senior-passenger=false&trip%5B%5D%5Borigination%5D={origin_airport}&trip%5B%5D%5Bdestination%5D={destination_airport}&trip%5B%5D%5Bdeparture-date%5D={departure_date}'.format(
-            record_locator=record_locator,
-            first_name=first_name,
-            last_name=last_name,
-            origin_airport=origin_airport,
-            destination_airport=destination_airport,
-            departure_date=departure_date
-        )
-        return self._session.get(url)
+
+        params = {
+            'first-name': first_name,
+            'last-name': last_name,
+            'trip[][origination]': origin_airport,
+            'trip[][destination]': destination_airport,
+            'trip[][departure-date]': departure_date,
+            'is-senior-passengers': 'false',
+        }
+
+        url = f'/api/extensions/v1/mobile/reservations/record-locator/{record_locator}/products'
+
+        return self._session.get(url, params=params)
 
     def get_price_change_flight(self, record_locator, first_name, last_name, product_id):
-        url = '/api/reservations-api/v1/air-reservations/reservations/record-locator/{record_locator}/prices?first-name={first_name}&last-name={last_name}&product-id%5B%5D={product_id}'.format(
-            record_locator=record_locator,
-            first_name=first_name,
-            last_name=last_name,
-            product_id=product_id
-        )
-        return self._session.get(url)
+
+        params = {
+            'first-name': first_name,
+            'last-name': last_name,
+            'product-id[]': product_id,
+        }
+
+        url = f'/api/reservations-api/v1/air-reservations/reservations/record-locator/{record_locator}/prices'
+
+        return self._session.get(url, params=params)
 
     def get_cancellation_details(self, record_locator, first_name, last_name):
-        url = '/api/reservations-api/v1/air-reservations/reservations/record-locator/{record_locator}?first-name={first_name}&last-name={last_name}&action=CANCEL'.format(
-            record_locator=record_locator,
-            first_name=first_name,
-            last_name=last_name
-        )
-        return self._session.get(url)
+        params = {
+            'first-name': first_name,
+            'last-name': last_name,
+            'action': 'CANCEL'
+        }
+        url = f'/api/reservations-api/v1/air-reservations/reservations/record-locator/{record_locator}'
+
+        return self._session.get(url, params=params)
 
     def get_available_flights(self, departure_date, origin_airport, destination_airport, currency='Points'):
-        url = '/api/extensions/v1/mobile/flights/products?origination-airport={origin_airport}&destination-airport={destination_airport}&departure-date={departure_date}&departure-date2=&number-adult-passengers=1&number-senior-passengers=0&promo-code=&currency-type=Points'.format(
-            origin_airport=origin_airport,
-            destination_airport=destination_airport,
-            departure_date=departure_date
-        )
-        return self._session.get(url)
+        params = {
+            'origination-airport': origin_airport,
+            'destination-airport': destination_airport,
+            'departure-date': departure_date,
+            'number-adult-passengers': 1,
+            'number-senior-passengers': 0,
+            'currency-type': currency
+        }
+
+        url = '/api/extensions/v1/mobile/flights/products'
+        return self._session.get(url, params=params)
 
 
 class _SouthwestSession():
@@ -75,8 +95,8 @@ class _SouthwestSession():
         self.account_number = data['accessTokenDetails']['accountNumber']
         self.access_token = data['accessToken']
 
-    def get(self, path, success_codes=[200]):
-        resp = self._session.get(self._get_url(path), headers=self._get_headers())
+    def get(self, path, success_codes=(200,), params=None):
+        resp = self._session.get(self._get_url(path), headers=self._get_headers(), params=params)
         return self._parsed_response(resp, success_codes=success_codes)
 
     def post(self, path, payload, success_codes=[200]):
@@ -98,5 +118,6 @@ class _SouthwestSession():
     def _parsed_response(response, success_codes=[200]):
         if response.status_code not in success_codes:
             print(response.text)
-            raise Exception('Invalid status code received. Expected {}. Received {}.'.format(success_codes, response.status_code))
+            raise Exception(f'Invalid status code received. Expected {success_codes}. Received {response.status_code}.')
+
         return response.json()

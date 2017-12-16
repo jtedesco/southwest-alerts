@@ -1,37 +1,49 @@
+import arrow
 import logging
 import requests
 import sys
 
-from southwestalerts.southwest import Southwest
-from southwestalerts import settings
+from southwest import Southwest
+import settings
+
+DATETIME_FORMAT = 'YYYY-MM-DDTHH:mm'
+DATE_FORMAT = 'YYYY-MM-DD'
 
 
 def check_for_price_drops(username, password, email):
     southwest = Southwest(username, password)
-    for trip in southwest.get_upcoming_trips()['trips']:
-        for flight in trip['flights']:
-            passenger = flight['passengers'][0]
+    flights = [f for t in southwest.get_upcoming_trips()['trips'] for f in t['flights']]
+    for flight in flights:
+        try:
+            if flight['internationalFlight']:
+                logging.info('Skipping international flight')  # TODO use the desktop API to handle international flights
+                continue
+
+            first_name = flight['passengers'][0]['firstName']
+            last_name = flight['passengers'][0]['lastName']
             record_locator = flight['recordLocator']
-            cancellation_details = southwest.get_cancellation_details(record_locator, passenger['firstName'], passenger['lastName'])
+            cancellation_details = southwest.get_cancellation_details(record_locator, first_name, last_name)
             itinerary_price = cancellation_details['pointsRefund']['amountPoints']
+
             # Calculate total for all of the legs of the flight
             matching_flights_price = 0
             for origination_destination in cancellation_details['itinerary']['originationDestinations']:
-                departure_datetime = origination_destination['segments'][0]['departureDateTime'].split('.000')[0][:-3]
-                departure_date = departure_datetime.split('T')[0]
-                arrival_datetime = origination_destination['segments'][-1]['arrivalDateTime'].split('.000')[0][:-3]
+                departure_datetime = arrow.get(origination_destination['segments'][0]['departureDateTime'])
+                arrival_datetime = arrow.get(origination_destination['segments'][-1]['arrivalDateTime'])
 
                 origin_airport = origination_destination['segments'][0]['originationAirportCode']
                 destination_airport = origination_destination['segments'][-1]['destinationAirportCode']
                 available = southwest.get_available_flights(
-                    departure_date,
+                    departure_datetime.format(DATE_FORMAT),
                     origin_airport,
                     destination_airport
                 )
 
                 # Find that the flight that matches the purchased flight
-                matching_flight = next(f for f in available['trips'][0]['airProducts'] if f['segments'][0]['departureDateTime'] == departure_datetime and f['segments'][-1]['arrivalDateTime'] == arrival_datetime)
+                matching_flight = next(f for f in available['trips'][0]['airProducts'] if f['segments'][0]['departureDateTime'] == departure_datetime.format(DATETIME_FORMAT) and f['segments'][-1]['arrivalDateTime'] == arrival_datetime.format(DATETIME_FORMAT))
+
                 matching_flight_price = matching_flight['fareProducts'][-1]['pointsPrice']['discountedRedemptionPoints']
+                matching_flight_price = min([f['pointsPrice']['discountedRedemptionPoints'] for f in matching_flight['fareProducts'] if f['pointsPrice']['discountedRedemptionPoints'] > 0])
                 matching_flights_price += matching_flight_price
 
             # Calculate refund details (current flight price - sum(current price of all legs), and print log message
@@ -42,9 +54,10 @@ def check_for_price_drops(username, password, email):
                 record_locator=record_locator,
                 origin_airport=origin_airport,
                 destination_airport=destination_airport,
-                departure_date=departure_date
+                departure_date=departure_datetime.format(DATE_FORMAT)
             )
             logging.info(message)
+
             if refund_amount > 0:
                 logging.info('Sending email for price drop')
                 resp = requests.post(
@@ -54,7 +67,8 @@ def check_for_price_drops(username, password, email):
                           'to': [email],
                           'subject': 'Southwest Price Drop Alert',
                           'text': message})
-                assert resp.status_code == 200
+        except:
+            logging.exception('error')
 
 
 if __name__ == '__main__':

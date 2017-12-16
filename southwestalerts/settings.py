@@ -17,7 +17,6 @@ _index = 1
 mailgun_api_key = os.environ['MAILGUN_API_KEY']
 mailgun_domain = os.environ['MAILGUN_DOMAIN']
 users = []
-while os.environ.get('USERNAME{}'.format(_index)):
-    user = User(os.environ['USERNAME{}'.format(_index)], os.environ['PASSWORD{}'.format(_index)], os.environ['EMAIL{}'.format(_index)])
-    users.append(user)
-    _index += 1
+
+user = User(os.environ['SOUTHWEST_USERNAME'], os.environ['SOUTHWEST_PASSWORD'], os.environ['SOUTHWEST_EMAIL'])
+users.append(user)
