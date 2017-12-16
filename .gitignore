@@ -9,3 +9,4 @@ src/
 venv/
 .secrets.yaml
 .python-version
+env.sh
