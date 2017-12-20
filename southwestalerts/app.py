@@ -77,6 +77,6 @@ def check_for_price_drops(username, password, email):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='[%(asctime)s] %(levelname)s:\t%(message)s')
     for user in settings.users:
         check_for_price_drops(user.username, user.password, user.email)
