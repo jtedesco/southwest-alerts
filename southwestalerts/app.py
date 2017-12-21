@@ -67,13 +67,21 @@ def check_for_price_drops(username, password, email):
             logging.exception('error')
 
     if messages:
-        resp = requests.post(
-            'https://api.mailgun.net/v3/{}/messages'.format(settings.mailgun_domain),
-            auth=('api', settings.mailgun_api_key),
-            data={'from': 'Southwest Alerts <southwest-alerts@{}>'.format(settings.mailgun_domain),
-                  'to': [email],
-                  'subject': 'Southwest Price Drop Alert',
-                  'text': '\n'.join(messages)})
+        send_email(email, '\n'.join(messages))
+    else:
+        send_email(email, 'No price drops today')
+
+
+def send_email(email, message):
+    resp = requests.post(
+        'https://api.mailgun.net/v3/{}/messages'.format(settings.mailgun_domain),
+        auth=('api', settings.mailgun_api_key),
+        data={'from': 'Southwest Alerts <southwest-alerts@{}>'.format(settings.mailgun_domain),
+              'to': [email],
+              'subject': 'Southwest Price Drop Alert',
+              'text': message})
+
+    logging.info(resp)
 
 
 if __name__ == '__main__':
