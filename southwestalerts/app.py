@@ -68,8 +68,6 @@ def check_for_price_drops(username, password, email):
 
     if messages:
         send_email(email, '\n'.join(messages))
-    else:
-        send_email(email, 'No price drops today')
 
 
 def send_email(email, message):
