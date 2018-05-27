@@ -48,12 +48,25 @@ pip3 install -r requirements.txt
 ```
 export MAILGUN_DOMAIN=VALUE
 export MAILGUN_API_KEY=VALUE
-export USERNAME1=VALUE
-export PASSWORD1=VALUE
-export EMAIL1=VALUE
+export SOUTHWEST_USERNAME1=VALUE
+export SOUTHWEST_PASSWORD1=VALUE
+export EMAIL=VALUE
+```
+
+This app supports monitoring multiple southwest accounts simultaneously, e.g:
+
+```
+export SOUTHWEST_USERNAME1=VALUE1
+export SOUTHWEST_PASSWORD1=VALUE1
+export SOUTHWEST_USERNAME2=VALUE2
+export SOUTHWEST_PASSWORD2=VALUE2
+...
+export EMAIL=VALUE
 ```
 
 4. Run
+
+Set the desired environment variables, then simply run:
 
 ```
 python southwestalerts/app.py
