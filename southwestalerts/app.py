@@ -19,7 +19,7 @@ def check_for_price_drops(username, password, email):
         try:
             if flight['internationalFlight']:
                 # TODO use the desktop API to handle international flights
-                logging.info('Skipping international flight')
+                logging.info('Skipping international flight...')
                 continue
 
             first_name = flight['passengers'][0]['firstName']
@@ -28,16 +28,30 @@ def check_for_price_drops(username, password, email):
             cancellation_details = southwest_session.get_cancellation_details(
                     record_locator, first_name, last_name)
             if 'pointsRefund' not in cancellation_details:
-                destinations = cancellation_details['itinerary']['originationDestinations']
-                all_companion_fares = all(d['fareType'] == 'Companion' for d in destinations)
+                itinerary = cancellation_details['itinerary']['originationDestinations']
+                all_companion_fares = all(d['fareType'] == 'Companion' for d in itinerary)
                 if all_companion_fares:
                     logging.info('Skipping flight from {} to {} on {}, booked as companion.'.format(
-                        destinations[0]['segments'][0]['originationAirportCode'],
-                        destinations[0]['segments'][-1]['destinationAirportCode'],
-                        arrow.get(destinations[0]['segments'][0]['departureDateTime']).format(DATE_FORMAT)))
+                        itinerary[0]['segments'][0]['originationAirportCode'],
+                        itinerary[0]['segments'][-1]['destinationAirportCode'],
+                        arrow.get(itinerary[0]['segments'][0]['departureDateTime']).format(DATE_FORMAT)))
                     continue
+                elif cancellation_details['currencyType'] == 'Dollars':
+                    # Make a hacky estimate of the points equivalent flight. This is a conservative
+                    # estimate that will only flag drastic price changes for cash bookings.
+                    total_funds_in_cents = sum(cancellation_details['availableFunds'].values())
+                    # estimate on the low end, so we are just notified for large price changes
+                    # (southwest points are very conservatively worth 1.5 cents per point)
+                    itinerary_price = total_funds_in_cents / 1.5
+                    logging.info('Estimating price of ${} as {} points for flight from {} to {} on {}.'.format(
+                        round(total_funds_in_cents / 100.0),
+                        itinerary_price,
+                        itinerary[0]['segments'][0]['originationAirportCode'],
+                        itinerary[0]['segments'][-1]['destinationAirportCode'],
+                        arrow.get(itinerary[0]['segments'][0]['departureDateTime']).format(DATE_FORMAT)))
 
-            itinerary_price = cancellation_details['pointsRefund']['amountPoints']
+            else:
+                itinerary_price = cancellation_details['pointsRefund']['amountPoints']
 
             # Calculate total for all of the legs of the flight
             matching_flights_price = 0
@@ -74,14 +88,16 @@ def check_for_price_drops(username, password, email):
                     if refund_amount > 0 else 'Price increase of {}'.format(refund_amount * -1))
             message_tpl = (
                     '{base_message} points detected for flight {record_locator} '
-                    'from {origin_airport} to {destination_airport} on {departure_date}')
+                    'from {origin_airport} to {destination_airport} on {departure_date} '
+                    'for account {username}')
             message = message_tpl.format(
                 base_message=base_message,
                 refund_amount=refund_amount,
                 record_locator=record_locator,
                 origin_airport=origin_airport,
                 destination_airport=destination_airport,
-                departure_date=departure_datetime.format(DATE_FORMAT))
+                departure_date=departure_datetime.format(DATE_FORMAT),
+                username=username)
             logging.info(message)
 
             if refund_amount > 100:
