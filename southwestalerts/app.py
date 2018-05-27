@@ -18,7 +18,8 @@ def check_for_price_drops(username, password, email):
     for flight in flights:
         try:
             if flight['internationalFlight']:
-                logging.info('Skipping international flight')  # TODO use the desktop API to handle international flights
+                # TODO use the desktop API to handle international flights
+                logging.info('Skipping international flight')
                 continue
 
             first_name = flight['passengers'][0]['firstName']
@@ -42,22 +43,34 @@ def check_for_price_drops(username, password, email):
                 )
 
                 # Find that the flight that matches the purchased flight
-                matching_flight = next(f for f in available['trips'][0]['airProducts'] if f['segments'][0]['departureDateTime'] == departure_datetime.format(DATETIME_FORMAT) and f['segments'][-1]['arrivalDateTime'] == arrival_datetime.format(DATETIME_FORMAT))
+                matching_flight = next(
+                        f for f in available['trips'][0]['airProducts']
+                        if (f['segments'][0]['departureDateTime'] == departure_datetime.format(DATETIME_FORMAT)
+                            and f['segments'][-1]['arrivalDateTime'] == arrival_datetime.format(DATETIME_FORMAT)))
 
-                matching_flight_price = matching_flight['fareProducts'][-1]['pointsPrice']['discountedRedemptionPoints']
-                matching_flight_price = min([f['pointsPrice']['discountedRedemptionPoints'] for f in matching_flight['fareProducts'] if f['pointsPrice']['discountedRedemptionPoints'] > 0])
+                matching_flight_price = (
+                        matching_flight['fareProducts'][-1]['pointsPrice']['discountedRedemptionPoints'])
+                matching_flight_price = min([
+                    f['pointsPrice']['discountedRedemptionPoints']
+                    for f in matching_flight['fareProducts']
+                    if f['pointsPrice']['discountedRedemptionPoints'] > 0])
                 matching_flights_price += matching_flight_price
 
             # Calculate refund details (current flight price - sum(current price of all legs), and print log message
             refund_amount = itinerary_price - matching_flights_price
-            message = '{base_message} points detected for flight {record_locator} from {origin_airport} to {destination_airport} on {departure_date}'.format(
-                base_message='Price drop of {}'.format(refund_amount) if refund_amount > 0 else 'Price increase of {}'.format(refund_amount * -1),
+            base_message = (
+                    'Price drop of {}'.format(refund_amount)
+                    if refund_amount > 0 else 'Price increase of {}'.format(refund_amount * -1))
+            message_tpl = (
+                    '{base_message} points detected for flight {record_locator} '
+                    'from {origin_airport} to {destination_airport} on {departure_date}')
+            message = message_tpl.format(
+                base_message=base_message,
                 refund_amount=refund_amount,
                 record_locator=record_locator,
                 origin_airport=origin_airport,
                 destination_airport=destination_airport,
-                departure_date=departure_datetime.format(DATE_FORMAT)
-            )
+                departure_date=departure_datetime.format(DATE_FORMAT))
             logging.info(message)
 
             if refund_amount > 100:
