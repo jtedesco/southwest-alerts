@@ -11,7 +11,8 @@ class Southwest(object):
         self._session = _SouthwestSession(username, password)
 
     def get_upcoming_trips(self):
-        url = f'/api/customer/v1/accounts/account-number/{self._session.account_number}/upcoming-trips'
+        url = '/api/customer/v1/accounts/account-number/{}/upcoming-trips'.format(
+                self._session.account_number)
 
         return self._session.get(url)
 
@@ -25,7 +26,7 @@ class Southwest(object):
             'action': 'CHANGE'
         }
 
-        url = f'/api/extensions/v1/mobile/reservations/record-locator/{record_locator}'
+        url = '/api/extensions/v1/mobile/reservations/record-locator/' + record_locator
 
         return self._session.get(url, params=params)
 
@@ -42,7 +43,8 @@ class Southwest(object):
             'is-senior-passengers': 'false',
         }
 
-        url = f'/api/extensions/v1/mobile/reservations/record-locator/{record_locator}/products'
+        url = '/api/extensions/v1/mobile/reservations/record-locator/{}/products'.format(
+                record_locator)
 
         return self._session.get(url, params=params)
 
@@ -54,7 +56,8 @@ class Southwest(object):
             'product-id[]': product_id,
         }
 
-        url = f'/api/reservations-api/v1/air-reservations/reservations/record-locator/{record_locator}/prices'
+        url = '/api/reservations-api/v1/air-reservations/reservations/record-locator/{}/prices'.format(
+                record_locator)
 
         return self._session.get(url, params=params)
 
@@ -64,7 +67,8 @@ class Southwest(object):
             'last-name': last_name,
             'action': 'CANCEL'
         }
-        url = f'/api/reservations-api/v1/air-reservations/reservations/record-locator/{record_locator}'
+        url = '/api/reservations-api/v1/air-reservations/reservations/record-locator/{}'.format(
+                record_locator)
 
         return self._session.get(url, params=params)
 
@@ -99,7 +103,7 @@ class _SouthwestSession():
         resp = self._session.get(self._get_url(path), headers=self._get_headers(), params=params)
         return self._parsed_response(resp, success_codes=success_codes)
 
-    def post(self, path, payload, success_codes=[200]):
+    def post(self, path, payload, success_codes=(200,)):
         resp = self._session.post(self._get_url(path), data=json.dumps(payload), headers=self._get_headers())
         return self._parsed_response(resp, success_codes=success_codes)
 
@@ -115,9 +119,11 @@ class _SouthwestSession():
         }
 
     @staticmethod
-    def _parsed_response(response, success_codes=[200]):
+    def _parsed_response(response, success_codes=(200,)):
         if response.status_code not in success_codes:
             print(response.text)
-            raise Exception(f'Invalid status code received. Expected {success_codes}. Received {response.status_code}.')
+            raise Exception(
+                    'Invalid status code received. Expected {}. Received {}.'.format(
+                        success_codes, response.status_code))
 
         return response.json()
