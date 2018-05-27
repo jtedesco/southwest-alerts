@@ -10,3 +10,4 @@ venv/
 .secrets.yaml
 .python-version
 env.sh
+setup_env.sh
