@@ -1,18 +1,18 @@
 import arrow
 import logging
 import requests
+import settings
+import southwest
 import sys
 
-from southwest import Southwest
-import settings
 
 DATETIME_FORMAT = 'YYYY-MM-DDTHH:mm'
 DATE_FORMAT = 'YYYY-MM-DD'
 
 
 def check_for_price_drops(username, password, email):
-    southwest = Southwest(username, password)
-    flights = [f for t in southwest.get_upcoming_trips()['trips'] for f in t['flights']]
+    southwest_session = southwest.Southwest(username, password)
+    flights = [f for t in southwest_session.get_upcoming_trips()['trips'] for f in t['flights']]
     messages = []
 
     for flight in flights:
@@ -25,7 +25,18 @@ def check_for_price_drops(username, password, email):
             first_name = flight['passengers'][0]['firstName']
             last_name = flight['passengers'][0]['lastName']
             record_locator = flight['recordLocator']
-            cancellation_details = southwest.get_cancellation_details(record_locator, first_name, last_name)
+            cancellation_details = southwest_session.get_cancellation_details(
+                    record_locator, first_name, last_name)
+            if 'pointsRefund' not in cancellation_details:
+                destinations = cancellation_details['itinerary']['originationDestinations']
+                all_companion_fares = all(d['fareType'] == 'Companion' for d in destinations)
+                if all_companion_fares:
+                    logging.info('Skipping flight from {} to {} on {}, booked as companion.'.format(
+                        destinations[0]['segments'][0]['originationAirportCode'],
+                        destinations[0]['segments'][-1]['destinationAirportCode'],
+                        arrow.get(destinations[0]['segments'][0]['departureDateTime']).format(DATE_FORMAT)))
+                    continue
+
             itinerary_price = cancellation_details['pointsRefund']['amountPoints']
 
             # Calculate total for all of the legs of the flight
@@ -36,7 +47,7 @@ def check_for_price_drops(username, password, email):
 
                 origin_airport = origination_destination['segments'][0]['originationAirportCode']
                 destination_airport = origination_destination['segments'][-1]['destinationAirportCode']
-                available = southwest.get_available_flights(
+                available = southwest_session.get_available_flights(
                     departure_datetime.format(DATE_FORMAT),
                     origin_airport,
                     destination_airport
@@ -96,6 +107,9 @@ def send_email(email, message):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO, format='[%(asctime)s] %(levelname)s:\t%(message)s')
+    logging.basicConfig(
+            stream=sys.stdout,
+            level=logging.INFO,
+            format='[%(asctime)s] %(levelname)s:\t%(message)s')
     for user in settings.users:
         check_for_price_drops(user.username, user.password, user.email)
