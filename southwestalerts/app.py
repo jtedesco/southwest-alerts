@@ -111,12 +111,14 @@ def check_for_price_drops(username, password, email):
 
 
 def send_email(email, message):
+    url = 'https://api.mailgun.net/v3/{}/messages'.format(settings.mailgun_domain)
+    subject = 'Southwest Price Drop Alert ({})'.format(arrow.now().format(DATE_FORMAT))
     resp = requests.post(
-        'https://api.mailgun.net/v3/{}/messages'.format(settings.mailgun_domain),
+        url,
         auth=('api', settings.mailgun_api_key),
         data={'from': 'Southwest Alerts <southwest-alerts@{}>'.format(settings.mailgun_domain),
               'to': [email],
-              'subject': 'Southwest Price Drop Alert',
+              'subject': subject,
               'text': message})
 
     logging.info(resp)
