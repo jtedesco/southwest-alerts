@@ -100,7 +100,7 @@ def check_for_price_drops(username, password, email):
                 username=username)
             logging.info(message)
 
-            if refund_amount > 100:
+            if refund_amount > 1000:
                 messages.append(message)
                 logging.info('Sending email for price drop')
         except:
