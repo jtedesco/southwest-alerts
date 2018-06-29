@@ -8,6 +8,7 @@ import sys
 
 DATETIME_FORMAT = 'YYYY-MM-DDTHH:mm'
 DATE_FORMAT = 'YYYY-MM-DD'
+CHECK_CASH_REFUNDS = False
 
 
 def check_for_price_drops(username, password, email):
@@ -36,7 +37,7 @@ def check_for_price_drops(username, password, email):
                         itinerary[0]['segments'][-1]['destinationAirportCode'],
                         arrow.get(itinerary[0]['segments'][0]['departureDateTime']).format(DATE_FORMAT)))
                     continue
-                elif cancellation_details['currencyType'] == 'Dollars':
+                elif cancellation_details['currencyType'] == 'Dollars' and CHECK_CASH_REFUNDS:
                     # Make a hacky estimate of the points equivalent flight. This is a conservative
                     # estimate that will only flag drastic price changes for cash bookings.
                     total_funds_in_cents = sum(cancellation_details['availableFunds'].values())
