@@ -114,6 +114,7 @@ class _SouthwestSession():
     def _get_headers(self):
         return {
             'X-API-Key': API_KEY,
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Mobile Safari/537.36',
             'Content-Type': 'application/vnd.swacorp.com.accounts.login-v1.0+json',
             'token': self.access_token if hasattr(self, 'access_token') else None
         }
@@ -124,6 +125,6 @@ class _SouthwestSession():
             print(response.text)
             raise Exception(
                     'Invalid status code received. Expected {}. Received {}.'.format(
-                        success_codes, response.status_code))
+                        ' or '.join('%d' % c for c in success_codes), response.status_code))
 
         return response.json()

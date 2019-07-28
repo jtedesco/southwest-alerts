@@ -26,5 +26,5 @@ for user_key, pass_key in zip(username_keys, password_keys):
     password = os.environ[pass_key]
     users.append(User(username, password, os.environ['EMAIL']))
 
-print 'Found %d total Southwest users to scrape: %s' % (
-        len(users), ', '.join(u.username for u in users))
+print('Found %d total Southwest users to scrape: %s' % (
+      len(users), ', '.join(u.username for u in users)))
